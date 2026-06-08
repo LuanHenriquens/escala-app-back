@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String           @id @default(cuid())
+  name             String
+  phone            String           @unique
+  role             String           @default("MEMBER")
+  groupId          String?
+  group            Group?           @relation(fields: [groupId], references: [id])
+  scheduleMembers  ScheduleMember[]
+  vocalistSongs    Song[]           @relation("SongVocalist")
+  unavailableDates UnavailableDate[]
+  createdSchedules Schedule[]       @relation("ScheduleCreator")
+  otpCodes         OtpCode[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model Group {
+  id        String     @id @default(cuid())
+  name      String
+  code      String     @unique
+  members   User[]
+  schedules Schedule[]
+  createdAt DateTime   @default(now())
+}
+
+model Schedule {
+  id          String           @id @default(cuid())
+  groupId     String
+  group       Group            @relation(fields: [groupId], references: [id])
+  title       String
+  date        DateTime
+  createdById String
+  createdBy   User             @relation("ScheduleCreator", fields: [createdById], references: [id])
+  members     ScheduleMember[]
+  songs       Song[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model ScheduleMember {
+  id           String   @id @default(cuid())
+  scheduleId   String
+  schedule     Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  bandFunction String
+
+  @@unique([scheduleId, userId])
+}
+
+model Song {
+  id           String   @id @default(cuid())
+  scheduleId   String
+  schedule     Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  youtubeId    String
+  title        String
+  artist       String
+  thumbnailUrl String
+  youtubeUrl   String
+  vocalistId   String?
+  vocalist     User?    @relation("SongVocalist", fields: [vocalistId], references: [id])
+  tone         String?
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+}
+
+model UnavailableDate {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime
+
+  @@unique([userId, date])
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
